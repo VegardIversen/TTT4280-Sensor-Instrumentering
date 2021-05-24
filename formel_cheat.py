@@ -2,11 +2,32 @@ from os import remove
 import numpy as np
 import scipy.stats as st
 import scipy.constants as co
+from re import findall
 #beregninger for eksamen i sensor og instrumentering, pass på hva som er input i funksjonene. Har ikke lagt til noe feil sjekking.
 #Bør hovedsaklig kun brukes til raske beregninger. 
 
 def calculate_std(samples, ddof=1):
     return np.std(samples,ddof=ddof)
+
+def calculate_uniform_std(val, prec): #bruk decimal for prosent, 1% = 0.01
+    val_max = val+val*prec
+    val_min = val-val*prec
+    std = (val_max-val_min)/(np.sqrt(12))
+    print(f'std for uniform: {std}')
+    std_rel = std/val
+    print(f'Relativ std: {std_rel}')
+    return (val+val*prec - val*prec)/(np.sqrt(12))
+
+#denne funker ikke.
+'''
+def calculate_serie_std_num(R,prec):
+    nsamples = 10000
+    dR = prec*R
+    Rvec = R + 2*dR * (np.random.rand(nsamples,2)-0.5)
+    #Rvecsum = np.sum(Rvec)
+    print(f'mean: {np.mean(Rvec)}')
+    print(f'Realtiv std {np.std(Rvec)/np.mean(Rvec)}')
+'''
 
 def calculate_mean(samples):
     return np.mean(samples)
@@ -82,7 +103,7 @@ def calculate_Sn_blackOb(f, T):
 #Beregn Støy
 def calc_N(T,B):
     N = co.k * T * B
-    print(N)
+    #print(N)
     return N
 
 def N_dBm(T,B):
@@ -98,7 +119,7 @@ def calculate_T_e(N,B):
 def calculate_T_e_nf(nf):
     p = nf/10
     te = 290*(10**p -1)
-    print(te)
+    print(f'egen temperatur: {te}')
     return te
 
 #viktig at det sendes inn arrays
@@ -107,7 +128,7 @@ def calculate_Tcas(G_arr, T_arr):
     G_temp = 1
     for i in range(len(T_arr)):
         T_cas += T_arr[i]/G_temp
-        G_temp *= G_arr[i]
+        G_temp *= 10**(G_arr[i]/10)
     return T_cas
 
 def calculate_Fcas(G_arr,F_arr):
@@ -137,6 +158,20 @@ def amplifier_1_N(T,B,G,F,Ftype='dB'):
     N = G*(calc_N(290,B)+calc_N(T,B))
     return N
 
+def amplifier_1_N_Tr(Tr,B,G,F,Ftype='dB'):#når det kobles på en ideell motstand på inngangen
+    if(Ftype=='dB'):
+        NF = F
+        p = F/10
+        F = 10**p
+        Te = calculate_T_e_nf(NF)
+    else:
+        NF = 10*np.log10(F)
+        Te = calculate_T_e_nf(NF)
+    j = G/10
+    G = 10**j
+    N = G*(calc_N(Tr,B)+calc_N(Te,B))
+    return N
+
 def amplifier_1_noT0(B,G,F,T=np.nan, Ftype='dB'):
     if(Ftype=='dB'):
         NF = F
@@ -158,7 +193,7 @@ def amplifier_2_N(G_arr, T_arr, B, T0=290):#denne kan også brukes når man ser 
     
     G = 1
     for i in range(len(G_arr)):
-        G *= G_arr[i]
+        G *= 10**(G_arr[i]/10)
     N = co.k * B * G*(T0+T_cas)
     print(N)
     return N
@@ -166,6 +201,10 @@ def amplifier_2_N(G_arr, T_arr, B, T0=290):#denne kan også brukes når man ser 
 def calculate_Vrms(S_in, Z):#change to W before
 
     vrms = np.sqrt(S_in*Z)
+    return vrms
+def calculate_P_in_sin(vrms,Z): #beregn p_in når spissverdi og Z er gitt
+    p_in = vrms**2 /(2*Z)
+    return p_in
 
 
 #AD konverter
@@ -173,28 +212,58 @@ def AD_SNR_max_dB(bits):
     SNR = 1.76+6.02*bits #sjekk at dette stemmer med notatene
     print(SNR)
     return SNR
+    
 
-def make_array_from_input(delim=',', numpy=True):
+
+def make_array_from_input(delim=',', numpy=True, re_char=False, replace_dec_sign=False):
     ws = ' '
     arr_str = input('Input array >>> ')
+    if replace_dec_sign:
+        arr_str = arr_str.replace(',','.')
+    
     if ws in arr_str and not delim in arr_str:
         arr_str = arr_str.replace(' ', ',')
     if ws in arr_str and delim in arr_str:
         arr_str.strip(' ')
     arr = arr_str.split(delim)
+    
+    if re_char:
+        arr = findall(r"[-+]?\d*\.\d+|\d+", ' '.join(arr))
+        
     arr = [float(i) for i in arr]
     if numpy:
         arr = np.array(arr)
     return arr
 
+def estimate_tau_d_num(rel_un_t,rel_un_d):
+    nrand = 10000
+    tau = (1 + 2*rel_un_t*(np.random.rand(nrand) - 0.5))
+    d = (1 + 2*rel_un_d*(np.random.rand(nrand) - 0.5))
+    f = tau/d # Since c is constant, we can leave it out
+    expect_f = 1 # Since both tau and d have expected value one
+    max_error = np.max(np.abs(f - expect_f))/expect_f
+    print(f"Maximum relative error is {100*max_error:.2f}%")
 
 
 
 if __name__ == '__main__':
-    x = make_array_from_input(delim=',')
-    print(calculate_std(x))
-    confidence_interval_samp(x)
-    prediction_interval(x)
+    #x = make_array_from_input(delim=',',re_char=True,replace_dec_sign=True) #pass på at det ikke er noe \n (newline) i inputen.
+    g = [20,-10,16]
+    t = [calculate_T_e_nf(2.5),290,calculate_T_e_nf(8)]
+    Tcas = calculate_Tcas(g,t)
+    print(watt_to_dBm(amplifier_2_N(g,t,3*10**6,50)))
+
+    #print(calculate_std(x))
+    #confidence_interval_samp(x)
+    #prediction_interval(x)
+    #y = make_array_from_input(delim=',')
+    #confidence_interval_samp(y)
+
+    #calculate_uniform_std(1000,0.01)
+    
+    pass
+    
+    
 
 
 
@@ -203,5 +272,3 @@ if __name__ == '__main__':
     
 
 
-
-    
