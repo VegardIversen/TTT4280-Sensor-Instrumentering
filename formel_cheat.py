@@ -244,15 +244,24 @@ def estimate_tau_d_num(rel_un_t,rel_un_d):
     max_error = np.max(np.abs(f - expect_f))/expect_f
     print(f"Maximum relative error is {100*max_error:.2f}%")
 
+def calculate_fase_noise_PLL(fref=np.nan,N=np.nan,fout=np.nan):
+    if (N==np.nan):
+        fasenoise = 20*np.log10(fout/fref)
+    else:
+        fasenoise = 20 * np.log10(N)
+    return fasenoise
+
+
 
 
 if __name__ == '__main__':
     #x = make_array_from_input(delim=',',re_char=True,replace_dec_sign=True) #pass på at det ikke er noe \n (newline) i inputen.
-    g = [20,-10,16]
-    t = [calculate_T_e_nf(2.5),290,calculate_T_e_nf(8)]
-    Tcas = calculate_Tcas(g,t)
-    print(watt_to_dBm(amplifier_2_N(g,t,3*10**6,50)))
-
+    # g = [20,-10,16]
+    # t = [calculate_T_e_nf(2.5),290,calculate_T_e_nf(8)]
+    # Tcas = calculate_Tcas(g,t)
+    # print(watt_to_dBm(amplifier_2_N(g,t,3*10**6,50)))
+    x = calculate_P_in_sin(0.5,50)
+    print(watt_to_dBm(x))
     #print(calculate_std(x))
     #confidence_interval_samp(x)
     #prediction_interval(x)
