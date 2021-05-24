@@ -1,3 +1,4 @@
+from os import remove
 import numpy as np
 import scipy.stats as st
 import scipy.constants as co
@@ -168,10 +169,32 @@ def calculate_Vrms(S_in, Z):#change to W before
 
 
 #AD konverter
-def AD_SNR_max(bits):
+def AD_SNR_max_dB(bits):
     SNR = 1.76+6.02*bits #sjekk at dette stemmer med notatene
     print(SNR)
     return SNR
+
+def make_array_from_input(delim=',', numpy=True):
+    ws = ' '
+    arr_str = input('Input array >>> ')
+    if ws in arr_str and not delim in arr_str:
+        arr_str = arr_str.replace(' ', ',')
+    if ws in arr_str and delim in arr_str:
+        arr_str.strip(' ')
+    arr = arr_str.split(delim)
+    arr = [float(i) for i in arr]
+    if numpy:
+        arr = np.array(arr)
+    return arr
+
+
+
+
+if __name__ == '__main__':
+    x = make_array_from_input(delim=',')
+    print(x)
+
+
 
     
     
