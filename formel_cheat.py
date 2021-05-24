@@ -47,8 +47,8 @@ def prediction_interval(samples, alpha=0.05):
     sx = calculate_std(samples)
     pi_pm = tp*sx*np.sqrt(1+1/n)
     pi = [mx-pi_pm,mx+pi_pm]
-    print(f'Confidence interval is {mx} +/- {pi_pm} \n')
-    print(f'Confidence interval is {pi}')
+    print(f'Prediction interval is {mx} +/- {pi_pm} \n')
+    print(f'Prediction interval is {pi}')
 
 
 #Noise
@@ -192,7 +192,10 @@ def make_array_from_input(delim=',', numpy=True):
 
 if __name__ == '__main__':
     x = make_array_from_input(delim=',')
-    print(x)
+    print(calculate_std(x))
+    confidence_interval_samp(x)
+    prediction_interval(x)
+
 
 
 
